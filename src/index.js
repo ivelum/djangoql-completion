@@ -1113,4 +1113,4 @@ DjangoQL.prototype = {
 
 export default DjangoQL;
 
-global.DjangoQL = DjangoQL;
+window.DjangoQL = DjangoQL;

@@ -81,15 +81,21 @@ lexer.lexAll = function () {
   return result;
 };
 
-function suggestion(text, snippetBefore, snippetAfter) {
+function suggestion(text, snippetBefore, snippetAfter, explanation) {
   // text is being displayed in completion box and pasted when you hit Enter.
   // snippetBefore is an optional extra text to be pasted before main text.
   // snippetAfter is an optional text to be pasted after. It may also include
   // "|" symbol to designate desired cursor position after paste.
+  var suggestionText = text;
+  if (typeof explanation !== 'undefined') {
+    suggestionText += '<i>' + explanation + '</i>';
+  }
+
   return {
     text: text,
     snippetBefore: snippetBefore || '',
-    snippetAfter: snippetAfter || ''
+    snippetAfter: snippetAfter || '',
+    suggestionText: suggestionText
   };
 }
 
@@ -678,7 +684,7 @@ DjangoQL.prototype = {
         this.completionUL.appendChild(currentLi);
       }
       currentLi.innerHTML = this.highlight(
-          this.suggestions[i].text,
+          this.suggestions[i].suggestionText,
           this.prefix);
       if (i === this.selected) {
         currentLi.className = 'active';
@@ -1035,21 +1041,26 @@ DjangoQL.prototype = {
         break;
 
       case 'comparison':
-        suggestions = ['=', '!='];
+        suggestions = ['=', ['!=', 'is not equal to']];
         snippetAfter = ' ';
         if (field && field.type !== 'bool') {
-          if (field.type === 'str') {
-            suggestions.push('~');
-            suggestions.push('!~');
+          if (['str', 'date', 'datetime'].indexOf(field.type) >= 0) {
+            suggestions.push(['~', 'contains']);
+            suggestions.push(['!~', 'does not contain']);
             snippetAfter = ' "|"';
-          } else if (field.type === 'date' || field.type === 'datetime'
-                     || field.options) {
+          } else if (field.options) {
             snippetAfter = ' "|"';
           }
-          Array.prototype.push.apply(suggestions, ['>', '>=', '<', '<=']);
+          if (field.type !== 'str') {
+            Array.prototype.push.apply(suggestions, ['>', '>=', '<', '<=']);
+          }
         }
         this.suggestions = suggestions.map(function (s) {
-          return suggestion(s, '', snippetAfter);
+          if (typeof s === 'string') {
+            return suggestion(s, '', snippetAfter);
+          } else {
+            return suggestion(s[0], '', snippetAfter, s[1]);
+          }
         });
         if (field && field.type !== 'bool') {
           if (['str', 'date', 'datetime'].indexOf(field.type) >= 0

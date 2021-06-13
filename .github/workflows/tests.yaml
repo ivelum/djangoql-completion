@@ -1,0 +1,61 @@
+name: Tests
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+jobs:
+  notify-build-start:
+    # Secrets are not available for forks for security reasons, so pull
+    # request checks will fail when trying to send the Slack notification.
+    # Unfortunately, there's no way to explicitly check that a secret is
+    # available, so we check for event_name instead:
+    # https://github.com/actions/runner/issues/520
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      # Send build notifications to Slack
+      - uses: voxmedia/github-action-slack-notify-build@v1
+        id: slack
+        with:
+          channel_id: C0PT3267R
+          status: STARTED
+          color: warning
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 14
+      - run: yarn install
+      - run: yarn run tests
+
+      # Send notification on build failure
+      - name: Notify slack fail
+        uses: voxmedia/github-action-slack-notify-build@v1
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          channel_id: C0PT3267R
+          status: FAILED
+          color: danger
+
+  notify-build-success:
+    if: ${{ github.event_name == 'push' }}
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      # Send notification on build success
+      - name: Notify slack success
+        uses: voxmedia/github-action-slack-notify-build@v1
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          channel_id: C0PT3267R
+          status: SUCCESS
+          color: good

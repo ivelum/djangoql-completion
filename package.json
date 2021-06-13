@@ -1,7 +1,7 @@
 {
   "name": "djangoql-completion",
   "description": "DjangoQL completion widget",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "homepage": "https://github.com/ivelum/djangoql-completion",
   "author": "Denis Stebunov (https://github.com/stebunovd)",

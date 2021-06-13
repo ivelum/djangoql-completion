@@ -5,6 +5,15 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'completion.js',
+    environment: {
+      arrowFunction: false,
+      bigIntLiteral: false,
+      const: false,
+      destructuring: false,
+      dynamicImport: false,
+      forOf: false,
+      module: false,
+    },
   },
   devtool: 'source-map',
   module: {

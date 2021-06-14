@@ -1,0 +1,50 @@
+{
+  "env": {
+    "browser": true
+  },
+  "extends": ["airbnb", "plugin:jest/all"],
+  "parser": "@babel/eslint-parser",
+  "plugins": ["@babel", "jest"],
+  "rules": {
+    "func-names": 0,
+    "import/order": ["error", {
+      "alphabetize": {"order": "asc"},
+      "groups": [
+        ["builtin", "external"],
+        ["sibling", "parent", "internal"],
+        "index"
+      ],
+      "newlines-between": "always",
+      "pathGroups": [
+        {
+          "pattern": "./*.scss",
+          "group": "index"
+        },
+        {
+          "pattern": "../*.scss",
+          "group": "index"
+        }
+      ]
+    }],
+    "no-plusplus": 0,
+    "jest/prefer-expect-assertions": ["error", {
+      "onlyFunctionsWithAsyncKeyword": true
+    }],
+    "jest/no-hooks": ["error", {
+      "allow": ["beforeEach"]
+    }],
+    "lines-between-class-members": ["error", "always", {
+      "exceptAfterSingleLine": true
+    }],
+    "max-len": [2, 80, 4],
+    "no-underscore-dangle": ["error", {
+      "allow": ["_isMounted"]
+    }],
+    "no-unused-expressions": ["error", {
+      "allowTernary": true
+    }]
+  },
+  "settings": {
+    "import/resolver": "webpack"
+  }
+}

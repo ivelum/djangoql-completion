@@ -1,10 +1,11 @@
 # DjangoQL completion widget
 
-Syntax completion widget for [DjangoQL](https://github.com/ivelum/djangoql).
+An autocompletion widget for [DjangoQL](https://github.com/ivelum/djangoql)
+that you can embed inside your own custom JavaScript application.
 
 ## Installation
 
-DjangoQL completion widget is available at npm as
+The DjangoQL completion widget is available at npm as
 [djangoql-completion](https://www.npmjs.com/package/djangoql-completion). 
 You can install it using npm or yarn.
 
@@ -15,26 +16,27 @@ $ npm i --save djangoql-completion
 
 ## Usage
 
-First, you should create a `<textarea>` element somewhere on your page which
-will receive the user input and provide DjangoQL syntax completions. You can
-optionally pre-populate its contents with an existing query that user will be
-able to edit:
+1. Somewhere on your page, create a `<textarea>` element that can receive user
+input and provide DjangoQL syntax completions. You can optionally pre-populate
+its contents with an existing query that users can edit:
 
 ```html
 <textarea name="q">name ~ "war" and author.name = "Tolstoy"</textarea>
 ```
 
-Next, load the completion widget styles. If you're using Webpack with 
-[css-loader](https://webpack.js.org/loaders/css-loader/), you can import it
-right from your JavaScript code:
+2. Load the completion widget styles. If you're using Webpack with
+[css-loader](https://webpack.js.org/loaders/css-loader/), you can import the
+styles right from your JavaScript code:
 
 ```javascript
 import 'djangoql-completion/dist/completion.css';
 ```
-Please feel free to override the default styles to achieve the appropriate
-widget look and feel for your project.
 
-Finally, initialize the completion widget for the `<textarea>` that you created:
+Feel free to override the default styles to make the widget look right for your
+project.
+
+3. Finally, initialize the completion widget for the `<textarea>` that you created:
+
 ```javascript
 import DjangoQL from 'djangoql-completion';
 
@@ -50,7 +52,7 @@ const djangoQL = new DjangoQL({
   // CSS selector for the <textarea> element that you created above
   selector: 'textarea[name=q]',
   
-  // Should the <textarea> automatically grow vertically for long query inputs 
+  // For long query inputs, automatically resize the <textarea> vertically
   autoResize: true,
   
   // URL for the syntax help page (optional)
@@ -61,11 +63,11 @@ const djangoQL = new DjangoQL({
   },
 });
 
-// Once completion widget is initialized, you can control it using the 
+// Once the completion widget is initialized, you can control it using the
 // following methods:
 //
-// Popup the completions dialog (can be useful immediately after initialization,
-// if you'd like to show users that completion is available):
+// Popup the completions dialog (this might be useful to do immediately after
+// initialization, to show users that completion is available):
 //     djangoQL.popupCompletion();
 //
 // Disable completion widget:

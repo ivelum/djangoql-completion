@@ -27,13 +27,13 @@ module.exports = {
               '@babel/preset-env',
               {
                 targets: {
-                  ie: "9",
+                  ie: '9',
                 },
-              }
-            ]
+              },
+            ],
           ],
-        }
-      }
-    ]
+        },
+      },
+    ],
   },
 };

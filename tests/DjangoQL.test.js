@@ -3,8 +3,8 @@ import DjangoQL from '@/index';
 let djangoQL;
 let token;
 
-describe('DjangoQL completion', function () {
-  beforeEach(function () {
+describe('test DjangoQL completion', () => {
+  beforeEach(() => {
     document.body.innerHTML = '<textarea name="test"></textarea>';
 
     djangoQL = new DjangoQL({
@@ -14,118 +14,118 @@ describe('DjangoQL completion', function () {
           'auth.group': {
             user: {
               type: 'relation',
-              relation: 'auth.user'
+              relation: 'auth.user',
             },
             id: {
               type: 'int',
-              relation: null
+              relation: null,
             },
             name: {
               type: 'str',
-              relation: null
-            }
+              relation: null,
+            },
           },
           'auth.user': {
             book: {
               type: 'relation',
-              relation: 'core.book'
+              relation: 'core.book',
             },
             id: {
               type: 'int',
-              relation: null
+              relation: null,
             },
             password: {
               type: 'str',
-              relation: null
+              relation: null,
             },
             last_login: {
               type: 'datetime',
-              relation: null
+              relation: null,
             },
             is_superuser: {
               type: 'bool',
-              relation: null
+              relation: null,
             },
             username: {
               type: 'str',
-              relation: null
+              relation: null,
             },
             first_name: {
               type: 'str',
-              relation: null
+              relation: null,
             },
             last_name: {
               type: 'str',
-              relation: null
+              relation: null,
             },
             email: {
               type: 'str',
-              relation: null
+              relation: null,
             },
             is_staff: {
               type: 'bool',
-              relation: null
+              relation: null,
             },
             is_active: {
               type: 'bool',
-              relation: null
+              relation: null,
             },
             date_joined: {
               type: 'datetime',
-              relation: null
+              relation: null,
             },
             groups: {
               type: 'relation',
-              relation: 'auth.group'
-            }
+              relation: 'auth.group',
+            },
           },
           'core.book': {
             id: {
               type: 'int',
-              relation: null
+              relation: null,
             },
             name: {
               type: 'str',
-              relation: null
+              relation: null,
             },
             author: {
               type: 'relation',
-              relation: 'auth.user'
+              relation: 'auth.user',
             },
             written: {
               type: 'datetime',
-              relation: null
+              relation: null,
             },
             is_published: {
               type: 'bool',
-              relation: null
+              relation: null,
             },
             rating: {
               type: 'float',
-              relation: null
+              relation: null,
             },
             price: {
               type: 'float',
-              relation: null
-            }
-          }
-        }
+              relation: null,
+            },
+          },
+        },
       },
       selector: 'textarea[name=test]',
-      autoresize: true
+      autoresize: true,
     });
     token = djangoQL.token;
   });
 
-  describe('.init()', function () {
-    it('should properly read introspection data', function () {
+  describe('.init()', () => {
+    it('should properly read introspection data', () => {
       expect(djangoQL.currentModel).toBe('core.book');
     });
   });
 
-  describe('.lexer', function () {
-    it('should understand punctuation and ignore white space', function () {
-      var tokens = [
+  describe('.lexer', () => {
+    it('should understand punctuation and ignore white space', () => {
+      const tokens = [
         token('PAREN_L', '('),
         token('PAREN_R', ')'),
         token('DOT', '.'),
@@ -137,59 +137,60 @@ describe('DjangoQL completion', function () {
         token('LESS', '<'),
         token('LESS_EQUAL', '<='),
         token('CONTAINS', '~'),
-        token('NOT_CONTAINS', '!~')
+        token('NOT_CONTAINS', '!~'),
       ];
       djangoQL.lexer.setInput('() ., = != >\t >= < <= ~ !~');
-      tokens.forEach(function (t) {
+      tokens.forEach((t) => {
         expect(djangoQL.lexer.lex()).toStrictEqual(t);
       });
-      expect(djangoQL.lexer.lex()).toBeFalsy();  // end of input
+      expect(djangoQL.lexer.lex()).toBeFalsy(); // end of input
     });
 
-    it('should recognize names', function () {
-      var names = ['a', 'myVar_42', '__LOL__', '_', '_0'];
+    it('should recognize names', () => {
+      const names = ['a', 'myVar_42', '__LOL__', '_', '_0'];
       djangoQL.lexer.setInput(names.join(' '));
-      names.forEach(function (name) {
+      names.forEach((name) => {
         expect(djangoQL.lexer.lex()).toStrictEqual(token('NAME', name));
       });
     });
 
-    it('should recognize reserved words', function () {
-      var words = ['True', 'False', 'None', 'or', 'and', 'in'];
+    it('should recognize reserved words', () => {
+      const words = ['True', 'False', 'None', 'or', 'and', 'in'];
       djangoQL.lexer.setInput(words.join(' '));
-      words.forEach(function (word) {
-        expect(djangoQL.lexer.lex()).toStrictEqual(token(word.toUpperCase(), word));
+      words.forEach((word) => {
+        expect(djangoQL.lexer.lex())
+          .toStrictEqual(token(word.toUpperCase(), word));
       });
     });
 
-    it('should recognize strings', function () {
-      var strings = ['""', '"42"', '"\\t\\n\\u0042 \\" ^"'];
+    it('should recognize strings', () => {
+      const strings = ['""', '"42"', '"\\t\\n\\u0042 \\" ^"'];
       djangoQL.lexer.setInput(strings.join(' '));
-      strings.forEach(function (s) {
+      strings.forEach((s) => {
         expect(djangoQL.lexer.lex())
           .toStrictEqual(token('STRING_VALUE', s.slice(1, s.length - 1)));
       });
     });
 
-    it('should parse int values', function () {
-      var numbers = ['0', '-0', '42', '-42'];
+    it('should parse int values', () => {
+      const numbers = ['0', '-0', '42', '-42'];
       djangoQL.lexer.setInput(numbers.join(' '));
-      numbers.forEach(function (num) {
+      numbers.forEach((num) => {
         expect(djangoQL.lexer.lex()).toStrictEqual(token('INT_VALUE', num));
       });
     });
 
-    it('should parse float values', function () {
-      var numbers = ['-0.5e+42', '42.0', '2E64', '2.71e-0002'];
+    it('should parse float values', () => {
+      const numbers = ['-0.5e+42', '42.0', '2E64', '2.71e-0002'];
       djangoQL.lexer.setInput(numbers.join(' '));
-      numbers.forEach(function (num) {
+      numbers.forEach((num) => {
         expect(djangoQL.lexer.lex()).toStrictEqual(token('FLOAT_VALUE', num));
       });
     });
   });
 
-  describe('.resolveName()', function () {
-    it('should properly resolve known names', function () {
+  describe('.resolveName()', () => {
+    it('should properly resolve known names', () => {
       expect(djangoQL.resolveName('price'))
         .toStrictEqual({ model: 'core.book', field: 'price' });
       expect(djangoQL.resolveName('author'))
@@ -205,119 +206,200 @@ describe('DjangoQL completion', function () {
       expect(djangoQL.resolveName('author.groups.user.email'))
         .toStrictEqual({ model: 'auth.user', field: 'email' });
     });
-    it('should return nulls for unknown names', function () {
-      ['gav', 'author.gav', 'author.groups.gav'].forEach(function (name) {
-        expect(djangoQL.resolveName(name)).toStrictEqual({ model: null, field: null });
+    it('should return nulls for unknown names', () => {
+      ['gav', 'author.gav', 'author.groups.gav'].forEach((name) => {
+        expect(djangoQL.resolveName(name))
+          .toStrictEqual({ model: null, field: null });
       });
     });
   });
 
-  describe('.getScope()', function () {
-    it('should properly detect scope and prefix', function () {
-      var book = djangoQL.currentModel;
-      var examples = [
+  describe('.getScope()', () => {
+    it('should properly detect scope and prefix', () => {
+      const book = djangoQL.currentModel;
+      const examples = [
         {
           args: ['', 0],
-          result: { prefix: '', scope: 'field', model: book, field: null }
+          result: {
+            prefix: '',
+            scope: 'field',
+            model: book,
+            field: null,
+          },
         },
         {
           args: ['just some text after cursor', 0],
-          result: { prefix: '', scope: 'field', model: book, field: null }
+          result: {
+            prefix: '',
+            scope: 'field',
+            model: book,
+            field: null,
+          },
         },
         {
-          args: ['random_word', 4],  // cursor is at the end of word
-          result: { prefix: 'rand', scope: 'field', model: book, field: null }
+          args: ['random_word', 4], // cursor is at the end of word
+          result: {
+            prefix: 'rand',
+            scope: 'field',
+            model: book,
+            field: null,
+          },
         },
         {
-          args: ['random', 6],  // cursor is at the end of word
-          result: { prefix: 'random', scope: 'field', model: book, field: null }
+          args: ['random', 6], // cursor is at the end of word
+          result: {
+            prefix: 'random',
+            scope: 'field',
+            model: book,
+            field: null,
+          },
         },
         {
-          args: ['id', 2],  // cursor is at the end of known field
-          result: { prefix: 'id', scope: 'field', model: book, field: null }
+          args: ['id', 2], // cursor is at the end of known field
+          result: {
+            prefix: 'id',
+            scope: 'field',
+            model: book,
+            field: null,
+          },
         },
         {
-          args: ['id ', 3],  // cursor is after known field
-          result: { prefix: '', scope: 'comparison', model: book, field: 'id' }
+          args: ['id ', 3], // cursor is after known field
+          result: {
+            prefix: '',
+            scope: 'comparison',
+            model: book,
+            field: 'id',
+          },
         },
         {
-          args: ['id >', 4],  // cursor is at the end of comparison
-          result: { prefix: '>', scope: 'comparison', model: book, field: 'id' }
+          args: ['id >', 4], // cursor is at the end of comparison
+          result: {
+            prefix: '>',
+            scope: 'comparison',
+            model: book,
+            field: 'id',
+          },
         },
         {
-          args: ['id > ', 5],  // cursor is after comparison
-          result: { prefix: '', scope: 'value', model: book, field: 'id' }
+          args: ['id > ', 5], // cursor is after comparison
+          result: {
+            prefix: '',
+            scope: 'value',
+            model: book,
+            field: 'id',
+          },
         },
         {
-          args: ['id > 1', 6],  // entering value
-          result: { prefix: '1', scope: 'value', model: book, field: 'id' }
+          args: ['id > 1', 6], // entering value
+          result: {
+            prefix: '1',
+            scope: 'value',
+            model: book,
+            field: 'id',
+          },
         },
         {
-          args: ['id > 1 ', 7],  // cursor is after value
-          result: { prefix: '', scope: 'logical', model: null, field: null }
+          args: ['id > 1 ', 7], // cursor is after value
+          result: {
+            prefix: '',
+            scope: 'logical',
+            model: null,
+            field: null,
+          },
         },
         {
-          args: ['id > 1 hmm', 10],  // entering logical
-          result: { prefix: 'hmm', scope: 'logical', model: null, field: null }
+          args: ['id > 1 hmm', 10], // entering logical
+          result: {
+            prefix: 'hmm',
+            scope: 'logical',
+            model: null,
+            field: null,
+          },
         },
         {
-          args: ['id > 1 and ', 11],  // entered good logical
-          result: { prefix: '', scope: 'field', model: book, field: null }
+          args: ['id > 1 and ', 11], // entered good logical
+          result: {
+            prefix: '',
+            scope: 'field',
+            model: book,
+            field: null,
+          },
         },
         {
-          args: ['id > 1 and author.', 18],  // referencing related model
+          args: ['id > 1 and author.', 18], // referencing related model
           result: {
             prefix: '',
             scope: 'field',
             model: 'auth.user',
-            field: null
-          }
+            field: null,
+          },
         },
         {
-          args: ['id > 1 and author.i', 19],  // typing field of related model
+          args: ['id > 1 and author.i', 19], // typing field of related model
           result: {
             prefix: 'i',
             scope: 'field',
             model: 'auth.user',
-            field: null
-          }
+            field: null,
+          },
         },
         {
-          args: ['(id = 1) ', 9],  // cursor is after right paren and space
-          result: { prefix: '', scope: 'logical', model: null, field: null }
+          args: ['(id = 1) ', 9], // cursor is after right paren and space
+          result: {
+            prefix: '',
+            scope: 'logical',
+            model: null,
+            field: null,
+          },
         },
         {
-          args: ['(id = 1) a', 10],  // typing after right paren
-          result: { prefix: 'a', scope: 'logical', model: null, field: null }
+          args: ['(id = 1) a', 10], // typing after right paren
+          result: {
+            prefix: 'a',
+            scope: 'logical',
+            model: null,
+            field: null,
+          },
         },
         {
-          args: ['(id = 1)', 1],  // cursor is right after left paren
-          result: { prefix: '', scope: 'field', model: book, field: null }
+          args: ['(id = 1)', 1], // cursor is right after left paren
+          result: {
+            prefix: '',
+            scope: 'field',
+            model: book,
+            field: null,
+          },
         },
         {
-          args: ['(id = 1)', 2],  // cursor is 1 symbol after left paren
-          result: { prefix: 'i', scope: 'field', model: book, field: null }
-        }
+          args: ['(id = 1)', 2], // cursor is 1 symbol after left paren
+          result: {
+            prefix: 'i',
+            scope: 'field',
+            model: book,
+            field: null,
+          },
+        },
       ];
-      examples.forEach(function (e) {
-        var result = djangoQL.getContext.apply(djangoQL, e.args);
+      examples.forEach((e) => {
+        const result = djangoQL.getContext(...e.args);
         delete result.currentFullToken; // it's not relevant in this case
         expect(result).toStrictEqual(e.result);
       });
     });
 
-    it('should return nulls for unknown cases', function () {
-      var examples = [
-        ['random_word ', 12],  // cursor is after unknown field
-        ['id > 1 hmm ', 11],  // entered bad logical
-        ['(id = 1)', 8],  // just after right paren
-        ['a = "', 5]  // just after a quote
+    it('should return nulls for unknown cases', () => {
+      const examples = [
+        ['random_word ', 12], // cursor is after unknown field
+        ['id > 1 hmm ', 11], // entered bad logical
+        ['(id = 1)', 8], // just after right paren
+        ['a = "', 5], // just after a quote
       ];
-      examples.forEach(function (example) {
-        var context = djangoQL.getContext.apply(djangoQL, example);
-        expect(context.scope).toBe(null);
-        expect(context.model).toBe(null);
-        expect(context.field).toBe(null);
+      examples.forEach((example) => {
+        const context = djangoQL.getContext(...example);
+        expect(context.scope).toBeNull();
+        expect(context.model).toBeNull();
+        expect(context.field).toBeNull();
       });
     });
   });

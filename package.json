@@ -20,7 +20,8 @@
     "src"
   ],
   "dependencies": {
-    "lex": "1.7.9"
+    "lex": "1.7.9",
+    "lodash": "4.17.21"
   },
   "devDependencies": {
     "@babel/core": "7.14.3",

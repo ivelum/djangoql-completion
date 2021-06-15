@@ -13,6 +13,7 @@
   "scripts": {
     "build": "webpack --mode production",
     "lint": "node_modules/.bin/eslint --ext .js .",
+    "start": "webpack --mode development --watch",
     "tests": "jest ./tests"
   },
   "files": [

@@ -980,5 +980,3 @@ DjangoQL.prototype = {
 };
 
 export default DjangoQL;
-
-window.DjangoQL = DjangoQL;

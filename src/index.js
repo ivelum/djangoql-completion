@@ -859,7 +859,7 @@ DjangoQL.prototype = {
     }
   },
 
-  setCurrentModel: function (model) {
+  setCurrentModel(model) {
     if (this.models[model]) {
       this.currentModel = model;
       this.modelStack = [model];
@@ -917,16 +917,16 @@ DjangoQL.prototype = {
     }
     // Save last entered value
     this.previousInputValue = input.value;
- 
+
     this.prefix = context.prefix;
     const model = this.models[context.model];
     const field = context.field && model[context.field];
 
-    const modelStack = this.modelStack;
+    const { modelStack } = this;
     switch (context.scope) {
       case 'field':
-        this.suggestions = Object.keys(model).filter(function (f) {
-          const relation = model[f].relation;
+        this.suggestions = Object.keys(model).filter((f) => {
+          const { relation } = model[f];
           if ((model[f].type === 'relation')
             // Check that the model from a field relation wasn't in the stack
             && (modelStack.indexOf(relation) !== -1)
@@ -934,8 +934,8 @@ DjangoQL.prototype = {
             // E.g. an "author" can have the "authors_in_genre" relation
             && (modelStack.slice(-1)[0] !== relation)
           ) {
-              return false;
-            }
+            return false;
+          }
           return true;
         }).map((f) => (
           suggestion(f, '', model[f].type === 'relation' ? '.' : ' ')

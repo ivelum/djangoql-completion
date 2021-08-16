@@ -108,6 +108,8 @@ const DjangoQL = function (options) {
   this.options = options;
   this.currentModel = null;
   this.models = {};
+  this.modelStack = null; // for saving chain of models
+  this.previousInputValue = '';
   this.suggestionsAPIUrl = null;
 
   this.token = token;
@@ -309,6 +311,7 @@ DjangoQL.prototype = {
   loadIntrospections(introspections) {
     const initIntrospections = function (data) {
       this.currentModel = data.current_model;
+      this.modelStack = [this.currentModel];
       this.models = data.models;
       this.suggestionsAPIUrl = data.suggestions_api_url;
     }.bind(this);
@@ -856,6 +859,13 @@ DjangoQL.prototype = {
     }
   },
 
+  setCurrentModel: function (model) {
+    if (this.models[model]) {
+      this.currentModel = model;
+      this.modelStack = [model];
+    }
+  },
+
   generateSuggestions() {
     const input = this.textarea;
     let suggestions;
@@ -887,13 +897,47 @@ DjangoQL.prototype = {
     this.highlightCaseSensitive = true;
 
     const context = this.getContext(input.value, input.selectionStart);
+    // Check if model from context isn't in context
+    if (this.modelStack.indexOf(context.model) === -1
+      && input.value.slice(-1) === '.') {
+      // Add model to scope if dot entered to see next model suggestions
+      this.modelStack.push(context.model);
+    }
+
+    // If input was cleared
+    if (this.previousInputValue.length > 0 && input.value === '') {
+      this.modelStack = [this.currentModel];
+    }
+
+    // Remove last from model from if last element isn't equal to context model
+    if (this.previousInputValue.slice(-1) === '.'
+      && this.modelStack.slice(-1)[0] !== context.model
+    ) {
+      this.modelStack.pop();
+    }
+    // Save last entered value
+    this.previousInputValue = input.value;
+ 
     this.prefix = context.prefix;
     const model = this.models[context.model];
     const field = context.field && model[context.field];
 
+    const modelStack = this.modelStack;
     switch (context.scope) {
       case 'field':
-        this.suggestions = Object.keys(model).map((f) => (
+        this.suggestions = Object.keys(model).filter(function (f) {
+          const relation = model[f].relation;
+          if ((model[f].type === 'relation')
+            // Check that the model from a field relation wasn't in the stack
+            && (modelStack.indexOf(relation) !== -1)
+            // Last element in the stack could be equal to context model.
+            // E.g. an "author" can have the "authors_in_genre" relation
+            && (modelStack.slice(-1)[0] !== relation)
+          ) {
+              return false;
+            }
+          return true;
+        }).map((f) => (
           suggestion(f, '', model[f].type === 'relation' ? '.' : ' ')
         ));
         break;

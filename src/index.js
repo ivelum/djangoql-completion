@@ -108,7 +108,10 @@ const DjangoQL = function (options) {
   this.options = options;
   this.currentModel = null;
   this.models = {};
-  this.modelStack = null; // for saving chain of models
+  // For saving chain of models
+  this.modelStack = null;
+  // Index of model stacks after adding "and/or" operators
+  this.modelStackIndex = 0;
   this.previousInputValue = '';
   this.suggestionsAPIUrl = null;
 
@@ -311,7 +314,7 @@ DjangoQL.prototype = {
   loadIntrospections(introspections) {
     const initIntrospections = function (data) {
       this.currentModel = data.current_model;
-      this.modelStack = [this.currentModel];
+      this.modelStack = [[this.currentModel]];
       this.models = data.models;
       this.suggestionsAPIUrl = data.suggestions_api_url;
     }.bind(this);
@@ -862,7 +865,8 @@ DjangoQL.prototype = {
   setCurrentModel(model) {
     if (this.models[model]) {
       this.currentModel = model;
-      this.modelStack = [model];
+      this.modelStack = [[model]];
+      this.modelStackIndex = 0;
     }
   },
 
@@ -898,41 +902,86 @@ DjangoQL.prototype = {
 
     const context = this.getContext(input.value, input.selectionStart);
     // Check if model from context isn't in context
-    if (this.modelStack.indexOf(context.model) === -1
+    if (this.modelStack[this.modelStackIndex].indexOf(context.model) === -1
       && input.value.slice(-1) === '.') {
       // Add model to scope if dot entered to see next model suggestions
-      this.modelStack.push(context.model);
+      this.modelStack[this.modelStackIndex].push(context.model);
     }
 
     // If input was cleared
     if (this.previousInputValue.length > 0 && input.value === '') {
-      this.modelStack = [this.currentModel];
+      this.modelStack = [[this.currentModel]];
+      this.modelStackIndex = 0;
     }
+
+    const checkLogicalOperandsBetweenInputs = (currInput, prevInput) => {
+      const logicalOperands = [' and', ' or'];
+      for (let i = 0; i++; i < logicalOperands.length) {
+        const op = logicalOperands[i];
+        const opPos = currInput.length - op.length;
+        const opPrevPos = prevInput.length - op.length;
+        // If there's no 'and/or' in the current input at last position
+        if ((currInput.length && opPos > 0
+          && currInput.trim().indexOf(op) !== opPos)
+          // and there was 'and/or' in prev input at last position
+          && (prevInput.length && opPrevPos > 0
+              && prevInput.trim().indexOf(op) === opPrevPos)
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const countLogicalOperands = (value) => {
+      const logicalOperands = [' and', ' or'];
+      let count = 0;
+      const parts = value.split(' ');
+      for (let i = 0; i++; i < logicalOperands.length) {
+        const op = logicalOperands[i];
+        // Add space again to avoid searching in field names
+        // (e.g. model.ANDroid or model.operatOR)
+        count += parts.filter((s) => ` ${s}`.includes(op)).length;
+      }
+      return count;
+    };
 
     // Remove last from model from if last element isn't equal to context model
     if (this.previousInputValue.slice(-1) === '.'
-      && this.modelStack.slice(-1)[0] !== context.model
+      && this.modelStack[this.modelStackIndex].slice(-1)[0] !== context.model
     ) {
-      this.modelStack.pop();
+      this.modelStack[this.modelStackIndex].pop();
+    } else if (
+      // Check if logical operands aren't present in current input and were
+      // presented in previous input
+      checkLogicalOperandsBetweenInputs(
+        input.value.trim(),
+        this.previousInputValue.trim(),
+      )
+      // And if operand's count was changed
+      && (countLogicalOperands(input.value) < this.modelStackIndex)
+    ) {
+      if (this.modelStackIndex > 0) {
+        this.modelStackIndex -= 1;
+        this.modelStack.pop();
+      }
     }
-    // Save last entered value
-    this.previousInputValue = input.value;
 
     this.prefix = context.prefix;
     const model = this.models[context.model];
     const field = context.field && model[context.field];
 
-    const { modelStack } = this;
+    const { modelStack, modelStackIndex } = this;
     switch (context.scope) {
       case 'field':
         this.suggestions = Object.keys(model).filter((f) => {
           const { relation } = model[f];
           if ((model[f].type === 'relation')
             // Check that the model from a field relation wasn't in the stack
-            && (modelStack.indexOf(relation) !== -1)
+            && (modelStack[modelStackIndex].indexOf(relation) !== -1)
             // Last element in the stack could be equal to context model.
             // E.g. an "author" can have the "authors_in_genre" relation
-            && (modelStack.slice(-1)[0] !== relation)
+            && (modelStack[modelStackIndex].slice(-1)[0] !== relation)
           ) {
             return false;
           }
@@ -1007,6 +1056,17 @@ DjangoQL.prototype = {
           suggestion('and', '', ' '),
           suggestion('or', '', ' '),
         ];
+        // Check if "and/or" was just added
+        if (checkLogicalOperandsBetweenInputs(
+          this.previousInputValue,
+          input.value,
+        )
+          // and it's count was changed
+          && (countLogicalOperands(input.value) > this.modelStackIndex)
+        ) {
+          this.modelStackIndex += 1;
+          this.modelStack.push([this.currentModel]);
+        }
         break;
 
       default:
@@ -1019,6 +1079,8 @@ DjangoQL.prototype = {
     } else {
       this.selected = null;
     }
+    // Save last entered value
+    this.previousInputValue = input.value;
   },
 
 };

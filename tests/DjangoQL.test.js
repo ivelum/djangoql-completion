@@ -403,4 +403,57 @@ describe('test DjangoQL completion', () => {
       });
     });
   });
+
+  describe('.generateSuggestions()', () => {
+    it('should not have circular deps', () => {
+      djangoQL.textarea.value = 'author.';
+      djangoQL.generateSuggestions();
+      // "book.author.book" sholdn't be suggested
+      expect(djangoQL.suggestions).toEqual(
+        expect.not.arrayContaining([{
+          snippetAfter: ".",
+          snippetBefore: "",
+          suggestionText: "book",
+          text: "book",
+        }])
+      );
+      
+      // Change model and test in reverse side
+      djangoQL.setCurrentModel('core.author');
+      djangoQL.textarea.value = 'book.';
+      djangoQL.generateSuggestions();
+      expect(djangoQL.suggestions).toEqual(
+        expect.not.arrayContaining([{
+          snippetAfter: ".",
+          snippetBefore: "",
+          suggestionText: "author",
+          text: "author",
+        }])
+      );
+
+      // Add words one be one to build the Model Stack
+      djangoQL.setCurrentModel('auth.group');
+      djangoQL.textarea.value = 'user.';
+      djangoQL.generateSuggestions();
+      expect(djangoQL.suggestions).toEqual(
+        expect.arrayContaining([{
+          snippetAfter: ".",
+          snippetBefore: "",
+          suggestionText: "book",
+          text: "book",
+        }])
+      );
+      djangoQL.textarea.value = 'user.book.';
+      djangoQL.generateSuggestions();
+      // "User" model is already in the Model Stack
+      expect(djangoQL.suggestions).toEqual(
+        expect.not.arrayContaining([{
+          snippetAfter: ".",
+          snippetBefore: "",
+          suggestionText: "author",
+          text: "author",
+        }])
+      );
+    });
+  });
 });

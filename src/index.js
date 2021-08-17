@@ -108,11 +108,6 @@ const DjangoQL = function (options) {
   this.options = options;
   this.currentModel = null;
   this.models = {};
-  // For saving chain of models
-  this.modelStack = null;
-  // Index of model stacks after adding "and/or" operators
-  this.modelStackIndex = 0;
-  this.prevSavedToken = null;
   this.suggestionsAPIUrl = null;
 
   this.token = token;
@@ -314,7 +309,6 @@ DjangoQL.prototype = {
   loadIntrospections(introspections) {
     const initIntrospections = function (data) {
       this.currentModel = data.current_model;
-      this.modelStack = [[this.currentModel]];
       this.models = data.models;
       this.suggestionsAPIUrl = data.suggestions_api_url;
     }.bind(this);
@@ -605,7 +599,9 @@ DjangoQL.prototype = {
     let model = this.currentModel;
     let field = null;
 
+    const modelStack = [];
     if (model) {
+      modelStack.push(model);
       for (i = 0, l = nameParts.length; i < l; i++) {
         f = this.models[model][nameParts[i]];
         if (!f) {
@@ -614,13 +610,14 @@ DjangoQL.prototype = {
           break;
         } else if (f.type === 'relation') {
           model = f.relation;
+          modelStack.push(model);
           field = null;
         } else {
           field = nameParts[i];
         }
       }
     }
-    return { model, field };
+    return { modelStack, model, field };
   },
 
   getContext(text, cursorPos) {
@@ -629,7 +626,8 @@ DjangoQL.prototype = {
     let scope = null; // 'field', 'comparison', 'value', 'logical' or null
     let model = null; // model, set for 'field', 'comparison' and 'value'
     let field = null; // field, set for 'comparison' and 'value'
-    let modelStack = null; // Stack of models that includes all entered models
+    // Stack of models that includes all entered models
+    let modelStack = [this.currentModel];
 
     let nameParts;
     let resolvedName;
@@ -665,11 +663,6 @@ DjangoQL.prototype = {
       prefix = '';
     }
 
-    if (text.trim() === '') {
-      this.modelStack = [[this.currentModel]];
-      this.modelStackIndex = 0;
-    }
-
     const logicalTokens = ['AND', 'OR'];
     if (prefix === ')' && !whitespace) {
       // Nothing to suggest right after right paren
@@ -691,6 +684,7 @@ DjangoQL.prototype = {
         resolvedName = this.resolveName(nameParts.join('.'));
         if (resolvedName.model && !resolvedName.field) {
           model = resolvedName.model;
+          modelStack = resolvedName.modelStack;
         } else {
           // if resolvedName.model is null that means that model wasn't found.
           // if resolvedName.field is NOT null that means that the name
@@ -711,6 +705,7 @@ DjangoQL.prototype = {
         scope = 'value';
         model = resolvedName.model;
         field = resolvedName.field;
+        modelStack = resolvedName.modelStack;
         if (prefix[0] === '"' && (this.models[model][field].type === 'str'
             || this.models[model][field].options)) {
           prefix = prefix.slice(1);
@@ -722,6 +717,7 @@ DjangoQL.prototype = {
         scope = 'comparison';
         model = resolvedName.model;
         field = resolvedName.field;
+        modelStack = resolvedName.modelStack;
       }
     } else if (lastToken
       && whitespace
@@ -729,49 +725,6 @@ DjangoQL.prototype = {
         .indexOf(lastToken.name) >= 0) {
       scope = 'logical';
     }
-
-    // Count logical tokens
-    const logicalTokensCount = allTokens.filter(
-      (t) => logicalTokens.includes(t.name),
-    ).length;
-    if (model) {
-      // Check if model haven't been included yet
-      if (
-        !this.modelStack[this.modelStackIndex].includes(model)
-        && currentFullToken?.name === 'DOT'
-      ) {
-        // Add model to scope if "DOT" entered to see next model suggestions
-        this.modelStack[this.modelStackIndex].push(model);
-      } else if (
-        // Remove last from model from if last element isn't equal to model
-        this.modelStack[this.modelStackIndex].slice(-1)[0] !== model
-        && this.prevSavedToken?.name === 'DOT'
-      ) {
-        this.modelStack[this.modelStackIndex].pop();
-      }
-      // Check if logical operands was just added and count wasn't changed yet
-      if ((logicalTokens.indexOf(lastToken?.name) >= 0)
-        && logicalTokensCount > this.modelStackIndex
-      ) {
-        this.modelStackIndex += 1;
-        this.modelStack.push([model]);
-      }
-    }
-    // Check if logical operands aren't already present in current input,
-    // but count is different
-    if (
-      (logicalTokens.indexOf(this.prevSavedToken?.name) >= 0)
-      && logicalTokensCount < this.modelStackIndex
-    ) {
-      if (this.modelStackIndex > 0) {
-        this.modelStackIndex -= 1;
-        this.modelStack.pop();
-      }
-    }
-
-    modelStack = this.modelStack[this.modelStackIndex];
-    // Save last entered value
-    this.prevSavedToken = currentFullToken;
 
     return {
       prefix,
@@ -911,14 +864,6 @@ DjangoQL.prototype = {
         && scrollBottom > (this.completionUL.scrollHeight - rectHeight)) {
       // TODO: add some checks of context?
       this.populateFieldOptions(true);
-    }
-  },
-
-  setCurrentModel(model) {
-    if (this.models[model]) {
-      this.currentModel = model;
-      this.modelStack = [[model]];
-      this.modelStackIndex = 0;
     }
   },
 

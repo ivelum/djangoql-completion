@@ -204,7 +204,7 @@ describe('test DjangoQL completion', () => {
           modelStack: ['core.book', 'auth.user'],
         });
       expect(djangoQL.resolveName('author.first_name'))
-        .toStrictEqual({ 
+        .toStrictEqual({
           model: 'auth.user',
           field: 'first_name',
           modelStack: ['core.book', 'auth.user'],
@@ -475,7 +475,6 @@ describe('test DjangoQL completion', () => {
           text: 'author',
         }]),
       );
-
 
       djangoQL.currentModel = 'auth.group';
       djangoQL.textarea.value = 'user.';

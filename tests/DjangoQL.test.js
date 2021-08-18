@@ -192,25 +192,67 @@ describe('test DjangoQL completion', () => {
   describe('.resolveName()', () => {
     it('should properly resolve known names', () => {
       expect(djangoQL.resolveName('price'))
-        .toStrictEqual({ model: 'core.book', field: 'price' });
+        .toStrictEqual({
+          model: 'core.book',
+          field: 'price',
+          modelStack: ['core.book'],
+        });
       expect(djangoQL.resolveName('author'))
-        .toStrictEqual({ model: 'auth.user', field: null });
+        .toStrictEqual({
+          model: 'auth.user',
+          field: null,
+          modelStack: ['core.book', 'auth.user'],
+        });
       expect(djangoQL.resolveName('author.first_name'))
-        .toStrictEqual({ model: 'auth.user', field: 'first_name' });
+        .toStrictEqual({
+          model: 'auth.user',
+          field: 'first_name',
+          modelStack: ['core.book', 'auth.user'],
+        });
       expect(djangoQL.resolveName('author.groups'))
-        .toStrictEqual({ model: 'auth.group', field: null });
+        .toStrictEqual({
+          model: 'auth.group',
+          field: null,
+          modelStack: ['core.book', 'auth.user', 'auth.group'],
+        });
       expect(djangoQL.resolveName('author.groups.id'))
-        .toStrictEqual({ model: 'auth.group', field: 'id' });
+        .toStrictEqual({
+          model: 'auth.group',
+          field: 'id',
+          modelStack: ['core.book', 'auth.user', 'auth.group'],
+        });
       expect(djangoQL.resolveName('author.groups.user'))
-        .toStrictEqual({ model: 'auth.user', field: null });
+        .toStrictEqual({
+          model: 'auth.user',
+          field: null,
+          modelStack: ['core.book', 'auth.user', 'auth.group', 'auth.user'],
+        });
       expect(djangoQL.resolveName('author.groups.user.email'))
-        .toStrictEqual({ model: 'auth.user', field: 'email' });
+        .toStrictEqual({
+          model: 'auth.user',
+          field: 'email',
+          modelStack: ['core.book', 'auth.user', 'auth.group', 'auth.user'],
+        });
     });
     it('should return nulls for unknown names', () => {
-      ['gav', 'author.gav', 'author.groups.gav'].forEach((name) => {
-        expect(djangoQL.resolveName(name))
-          .toStrictEqual({ model: null, field: null });
-      });
+      expect(djangoQL.resolveName('gav'))
+        .toStrictEqual({
+          model: null,
+          field: null,
+          modelStack: ['core.book'],
+        });
+      expect(djangoQL.resolveName('author.gav'))
+        .toStrictEqual({
+          model: null,
+          field: null,
+          modelStack: ['core.book', 'auth.user'],
+        });
+      expect(djangoQL.resolveName('author.groups.gav'))
+        .toStrictEqual({
+          model: null,
+          field: null,
+          modelStack: ['core.book', 'auth.user', 'auth.group'],
+        });
     });
   });
 
@@ -384,6 +426,9 @@ describe('test DjangoQL completion', () => {
       examples.forEach((e) => {
         const result = djangoQL.getContext(...e.args);
         delete result.currentFullToken; // it's not relevant in this case
+        // Model Stack properly builds only for continiously interaction
+        // with textarea for now
+        delete result.modelStack;
         expect(result).toStrictEqual(e.result);
       });
     });
@@ -401,6 +446,58 @@ describe('test DjangoQL completion', () => {
         expect(context.model).toBeNull();
         expect(context.field).toBeNull();
       });
+    });
+  });
+
+  describe('.generateSuggestions()', () => {
+    it('should not have circular deps', () => {
+      djangoQL.textarea.value = 'author.';
+      djangoQL.generateSuggestions();
+      // "book.author.book" sholdn't be suggested
+      expect(djangoQL.suggestions).toStrictEqual(
+        expect.not.arrayContaining([{
+          snippetAfter: '.',
+          snippetBefore: '',
+          suggestionText: 'book',
+          text: 'book',
+        }]),
+      );
+
+      // Change model and test in reverse side
+      djangoQL.currentModel = 'auth.user';
+      djangoQL.textarea.value = 'book.';
+      djangoQL.generateSuggestions();
+      expect(djangoQL.suggestions).toStrictEqual(
+        expect.not.arrayContaining([{
+          snippetAfter: '.',
+          snippetBefore: '',
+          suggestionText: 'author',
+          text: 'author',
+        }]),
+      );
+
+      djangoQL.currentModel = 'auth.group';
+      djangoQL.textarea.value = 'user.';
+      djangoQL.generateSuggestions();
+      expect(djangoQL.suggestions).toStrictEqual(
+        expect.arrayContaining([{
+          snippetAfter: '.',
+          snippetBefore: '',
+          suggestionText: 'book',
+          text: 'book',
+        }]),
+      );
+      djangoQL.textarea.value = 'user.book.';
+      djangoQL.generateSuggestions();
+      // "User" model is already in the Model Stack
+      expect(djangoQL.suggestions).toStrictEqual(
+        expect.not.arrayContaining([{
+          snippetAfter: '.',
+          snippetBefore: '',
+          suggestionText: 'author',
+          text: 'author',
+        }]),
+      );
     });
   });
 });

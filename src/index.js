@@ -599,7 +599,9 @@ DjangoQL.prototype = {
     let model = this.currentModel;
     let field = null;
 
+    const modelStack = [];
     if (model) {
+      modelStack.push(model);
       for (i = 0, l = nameParts.length; i < l; i++) {
         f = this.models[model][nameParts[i]];
         if (!f) {
@@ -608,13 +610,14 @@ DjangoQL.prototype = {
           break;
         } else if (f.type === 'relation') {
           model = f.relation;
+          modelStack.push(model);
           field = null;
         } else {
           field = nameParts[i];
         }
       }
     }
-    return { model, field };
+    return { modelStack, model, field };
   },
 
   getContext(text, cursorPos) {
@@ -623,6 +626,8 @@ DjangoQL.prototype = {
     let scope = null; // 'field', 'comparison', 'value', 'logical' or null
     let model = null; // model, set for 'field', 'comparison' and 'value'
     let field = null; // field, set for 'comparison' and 'value'
+    // Stack of models that includes all entered models
+    let modelStack = [this.currentModel];
 
     let nameParts;
     let resolvedName;
@@ -658,14 +663,15 @@ DjangoQL.prototype = {
       prefix = '';
     }
 
+    const logicalTokens = ['AND', 'OR'];
     if (prefix === ')' && !whitespace) {
       // Nothing to suggest right after right paren
     } else if (!lastToken
-      || (['AND', 'OR'].indexOf(lastToken.name) >= 0 && whitespace)
+      || (logicalTokens.indexOf(lastToken.name) >= 0 && whitespace)
       || (prefix === '.' && lastToken && !whitespace)
       || (lastToken.name === 'PAREN_L'
         && (!nextToLastToken
-          || ['AND', 'OR'].indexOf(nextToLastToken.name) >= 0))) {
+          || logicalTokens.indexOf(nextToLastToken.name) >= 0))) {
       scope = 'field';
       model = this.currentModel;
       if (prefix === '.') {
@@ -678,6 +684,7 @@ DjangoQL.prototype = {
         resolvedName = this.resolveName(nameParts.join('.'));
         if (resolvedName.model && !resolvedName.field) {
           model = resolvedName.model;
+          modelStack = resolvedName.modelStack;
         } else {
           // if resolvedName.model is null that means that model wasn't found.
           // if resolvedName.field is NOT null that means that the name
@@ -698,6 +705,7 @@ DjangoQL.prototype = {
         scope = 'value';
         model = resolvedName.model;
         field = resolvedName.field;
+        modelStack = resolvedName.modelStack;
         if (prefix[0] === '"' && (this.models[model][field].type === 'str'
             || this.models[model][field].options)) {
           prefix = prefix.slice(1);
@@ -709,6 +717,7 @@ DjangoQL.prototype = {
         scope = 'comparison';
         model = resolvedName.model;
         field = resolvedName.field;
+        modelStack = resolvedName.modelStack;
       }
     } else if (lastToken
       && whitespace
@@ -716,12 +725,14 @@ DjangoQL.prototype = {
         .indexOf(lastToken.name) >= 0) {
       scope = 'logical';
     }
+
     return {
       prefix,
       scope,
       model,
       field,
       currentFullToken,
+      modelStack,
     };
   },
 
@@ -887,13 +898,26 @@ DjangoQL.prototype = {
     this.highlightCaseSensitive = true;
 
     const context = this.getContext(input.value, input.selectionStart);
+    const { modelStack } = context;
     this.prefix = context.prefix;
     const model = this.models[context.model];
     const field = context.field && model[context.field];
 
     switch (context.scope) {
       case 'field':
-        this.suggestions = Object.keys(model).map((f) => (
+        this.suggestions = Object.keys(model).filter((f) => {
+          const { relation } = model[f];
+          if ((model[f].type === 'relation')
+            // Check that the model from a field relation wasn't in the stack
+            && modelStack.includes(relation)
+            // Last element in the stack could be equal to context model.
+            // E.g. an "author" can have the "authors_in_genre" relation
+            && (modelStack.slice(-1)[0] !== relation)
+          ) {
+            return false;
+          }
+          return true;
+        }).map((f) => (
           suggestion(f, '', model[f].type === 'relation' ? '.' : ' ')
         ));
         break;

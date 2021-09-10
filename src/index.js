@@ -123,6 +123,16 @@ const DjangoQL = function (options) {
   this.completion = null;
   this.completionUL = null;
   this.completionEnabled = false;
+  // For providing comparison values for custom type
+  // So, comparison suggestions could be overrided by options
+  // Usage:
+  // comparisonValuesByType = {
+  //   'array': [
+  //     ['~', 'contains'],
+  //     ['!~', 'does not contain']
+  //    ],
+  //   }
+  this.comparisonValuesByType = options.comparisonValuesByType || {};
 
   // Initialization
   if (!isObject(options)) {
@@ -923,35 +933,44 @@ DjangoQL.prototype = {
         break;
 
       case 'comparison':
-        suggestions = ['=', ['!=', 'is not equal to']];
+        const type = field && field.type;
+        
         snippetAfter = ' ';
-        if (field && field.type !== 'bool') {
-          if (['str', 'date', 'datetime'].indexOf(field.type) >= 0) {
-            suggestions.push(['~', 'contains']);
-            suggestions.push(['!~', 'does not contain']);
-            snippetAfter = ' "|"';
-          } else if (field.options) {
-            snippetAfter = ' "|"';
+        if (type && this.comparisonValuesByType[type]) {
+          suggestions = this.comparisonValuesByType[type];
+          this.suggestions = suggestions.map((s) => {
+            return suggestion(s[0], '', snippetAfter, s[1]);
+          });
+        } else {
+          suggestions = ['=', ['!=', 'is not equal to']];
+          if (type !== 'bool') {
+            if (['str', 'date', 'datetime'].indexOf(field.type) >= 0) {
+              suggestions.push(['~', 'contains']);
+              suggestions.push(['!~', 'does not contain']);
+              snippetAfter = ' "|"';
+            } else if (field.options) {
+              snippetAfter = ' "|"';
+            }
+            if (field.type !== 'str') {
+              Array.prototype.push.apply(suggestions, ['>', '>=', '<', '<=']);
+            }
           }
-          if (field.type !== 'str') {
-            Array.prototype.push.apply(suggestions, ['>', '>=', '<', '<=']);
+          this.suggestions = suggestions.map((s) => {
+            if (typeof s === 'string') {
+              return suggestion(s, '', snippetAfter);
+            }
+            return suggestion(s[0], '', snippetAfter, s[1]);
+          });
+          if (type) {
+            if (['str', 'date', 'datetime'].indexOf(field.type) >= 0
+                || field.options) {
+              snippetAfter = ' ("|")';
+            } else {
+              snippetAfter = ' (|)';
+            }
+            this.suggestions.push(suggestion('in', '', snippetAfter));
+            this.suggestions.push(suggestion('not in', '', snippetAfter));
           }
-        }
-        this.suggestions = suggestions.map((s) => {
-          if (typeof s === 'string') {
-            return suggestion(s, '', snippetAfter);
-          }
-          return suggestion(s[0], '', snippetAfter, s[1]);
-        });
-        if (field && field.type !== 'bool') {
-          if (['str', 'date', 'datetime'].indexOf(field.type) >= 0
-              || field.options) {
-            snippetAfter = ' ("|")';
-          } else {
-            snippetAfter = ' (|)';
-          }
-          this.suggestions.push(suggestion('in', '', snippetAfter));
-          this.suggestions.push(suggestion('not in', '', snippetAfter));
         }
         // use "starts with" search filter instead of default
         searchFilter = function (item) {

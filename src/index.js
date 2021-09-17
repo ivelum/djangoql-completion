@@ -43,6 +43,10 @@ lexer.addRule(new RegExp(`and${reNotFollowedByName}`), (l) => token('AND', l));
 lexer.addRule(new RegExp(`not${reNotFollowedByName}`), (l) => token('NOT', l));
 lexer.addRule(new RegExp(`in${reNotFollowedByName}`), (l) => token('IN', l));
 lexer.addRule(
+  new RegExp(`regex${reNotFollowedByName}`),
+  (l) => token('REGEX', l),
+);
+lexer.addRule(
   new RegExp(`True${reNotFollowedByName}`),
   (l) => token('TRUE', l),
 );
@@ -929,6 +933,7 @@ DjangoQL.prototype = {
           if (['str', 'date', 'datetime'].indexOf(field.type) >= 0) {
             suggestions.push(['~', 'contains']);
             suggestions.push(['!~', 'does not contain']);
+            suggestions.push(['regex', '']);
             snippetAfter = ' "|"';
           } else if (field.options) {
             snippetAfter = ' "|"';

@@ -155,7 +155,7 @@ describe('test DjangoQL completion', () => {
     });
 
     it('should recognize reserved words', () => {
-      const words = ['True', 'False', 'None', 'or', 'and', 'in'];
+      const words = ['True', 'False', 'None', 'or', 'and', 'in', 'regex'];
       djangoQL.lexer.setInput(words.join(' '));
       words.forEach((word) => {
         expect(djangoQL.lexer.lex())

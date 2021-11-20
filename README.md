@@ -14,6 +14,13 @@ Using npm:
 $ npm i --save djangoql-completion
 ```
 
+## Version compatibility
+
+- For [DjangoQL](https://github.com/ivelum/djangoql) v0.16.0+ please use 
+  ``djangoql-completion`` v0.5.0+;
+- [DjangoQL](https://github.com/ivelum/djangoql) v0.15.4 and older: the latest
+  version of ``djangoql-completion`` that supports these releases is v0.4.0.
+
 ## Usage
 
 1. Somewhere on your page, create a `<textarea>` element that can receive user

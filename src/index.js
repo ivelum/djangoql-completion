@@ -43,6 +43,14 @@ lexer.addRule(new RegExp(`and${reNotFollowedByName}`), (l) => token('AND', l));
 lexer.addRule(new RegExp(`not${reNotFollowedByName}`), (l) => token('NOT', l));
 lexer.addRule(new RegExp(`in${reNotFollowedByName}`), (l) => token('IN', l));
 lexer.addRule(
+  new RegExp(`startswith${reNotFollowedByName}`),
+  (l) => token('STARTSWITH', l),
+);
+lexer.addRule(
+  new RegExp(`endswith${reNotFollowedByName}`),
+  (l) => token('ENDSWITH', l),
+);
+lexer.addRule(
   new RegExp(`True${reNotFollowedByName}`),
   (l) => token('TRUE', l),
 );
@@ -926,15 +934,27 @@ DjangoQL.prototype = {
         suggestions = ['=', ['!=', 'is not equal to']];
         snippetAfter = ' ';
         if (field && field.type !== 'bool') {
-          if (['str', 'date', 'datetime'].indexOf(field.type) >= 0) {
-            suggestions.push(['~', 'contains']);
-            suggestions.push(['!~', 'does not contain']);
+          if (['date', 'datetime'].indexOf(field.type) >= 0) {
+            suggestions.push(
+              ['~', 'contains'],
+              ['!~', 'does not contain'],
+            );
+            snippetAfter = ' "|"';
+          } else if (field.type === 'str') {
+            suggestions.push(
+              ['~', 'contains'],
+              ['!~', 'does not contain'],
+              'startswith',
+              'not startswith',
+              'endswith',
+              'not endswith',
+            );
             snippetAfter = ' "|"';
           } else if (field.options) {
             snippetAfter = ' "|"';
           }
           if (field.type !== 'str') {
-            Array.prototype.push.apply(suggestions, ['>', '>=', '<', '<=']);
+            suggestions.push('>', '>=', '<', '<=');
           }
         }
         this.suggestions = suggestions.map((s) => {

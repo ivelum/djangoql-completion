@@ -35,6 +35,7 @@ function token(name, value) {
   return { name, value };
 }
 
+lexer.addRule(/order by\b/, (l) => token('ORDER BY', l));
 lexer.addRule(whitespaceRegex, () => { /* ignore whitespace */ });
 lexer.addRule(/\./, (l) => token('DOT', l));
 lexer.addRule(/,/, (l) => token('COMMA', l));
@@ -61,6 +62,11 @@ lexer.addRule(
 lexer.addRule(
   new RegExp(`None${reNotFollowedByName}`),
   (l) => token('NONE', l),
+);
+lexer.addRule(new RegExp(`asc${reNotFollowedByName}`), (l) => token('ASC', l));
+lexer.addRule(
+  new RegExp(`desc${reNotFollowedByName}`),
+  (l) => token('DESC', l)
 );
 lexer.addRule(nameRegex, (l) => token('NAME', l));
 lexer.addRule(
@@ -631,17 +637,31 @@ DjangoQL.prototype = {
   getContext(text, cursorPos) {
     // This function returns an object with the following 4 properties:
     let prefix; // text already entered by user in the current scope
-    let scope = null; // 'field', 'comparison', 'value', 'logical' or null
+    let scope = null; // 'field', 'comparison', 'value', 'logical',
+	              // 'sortdir', or null
     let model = null; // model, set for 'field', 'comparison' and 'value'
     let field = null; // field, set for 'comparison' and 'value'
     // Stack of models that includes all entered models
     let modelStack = [this.currentModel];
+    let nestingLevel = 0;
+    let queryPart = 'expression'; // poor man's "grammar": we are either
+                                  // within the 'expression' part of the query,
+	                          // or within the 'ordering' part
 
     let nameParts;
     let resolvedName;
     let lastToken = null;
     let nextToLastToken = null;
     const tokens = this.lexer.setInput(text.slice(0, cursorPos)).lexAll();
+    tokens.forEach(t => {
+      if (t.name === 'ORDER BY') {
+	queryPart = 'ordering';
+      } else if (t.name === 'PAREN_L') {
+	nestingLevel++;
+      } else if (t.name == 'PAREN_R') {
+	nestingLevel--;
+      }
+    });
     const allTokens = this.lexer.setInput(text).lexAll();
     let currentFullToken = null;
     if (tokens.length && tokens[tokens.length - 1].end >= cursorPos) {
@@ -674,12 +694,14 @@ DjangoQL.prototype = {
     const logicalTokens = ['AND', 'OR'];
     if (prefix === ')' && !whitespace) {
       // Nothing to suggest right after right paren
-    } else if (!lastToken
-      || (logicalTokens.indexOf(lastToken.name) >= 0 && whitespace)
-      || (prefix === '.' && lastToken && !whitespace)
-      || (lastToken.name === 'PAREN_L'
-        && (!nextToLastToken
-          || logicalTokens.indexOf(nextToLastToken.name) >= 0))) {
+    } else if ((queryPart === 'expression' && (!lastToken
+        || (logicalTokens.indexOf(lastToken.name) >= 0 && whitespace)
+        || (prefix === '.' && lastToken && !whitespace)
+        || (lastToken.name === 'PAREN_L'
+          && (!nextToLastToken
+            || logicalTokens.indexOf(nextToLastToken.name) >= 0))))
+      || (queryPart === 'ordering' && lastToken
+        && (lastToken.name === 'ORDER BY' || lastToken.name === 'COMMA'))) {
       scope = 'field';
       model = this.currentModel;
       if (prefix === '.') {
@@ -702,7 +724,8 @@ DjangoQL.prototype = {
           model = null;
         }
       }
-    } else if (lastToken
+    } else if (queryPart === 'expression'
+      && lastToken
       && whitespace
       && nextToLastToken
       && nextToLastToken.name === 'NAME'
@@ -719,7 +742,8 @@ DjangoQL.prototype = {
           prefix = prefix.slice(1);
         }
       }
-    } else if (lastToken && whitespace && lastToken.name === 'NAME') {
+    } else if (queryPart === 'expression'
+	&& lastToken && whitespace && lastToken.name === 'NAME') {
       resolvedName = this.resolveName(lastToken.value);
       if (resolvedName.model) {
         scope = 'comparison';
@@ -727,11 +751,15 @@ DjangoQL.prototype = {
         field = resolvedName.field;
         modelStack = resolvedName.modelStack;
       }
-    } else if (lastToken
+    } else if (queryPart === 'expression'
+      && lastToken
       && whitespace
       && ['PAREN_R', 'INT_VALUE', 'FLOAT_VALUE', 'STRING_VALUE']
         .indexOf(lastToken.name) >= 0) {
       scope = 'logical';
+    } else if (queryPart === 'ordering'
+      && lastToken && lastToken.name === 'NAME') {
+	scope = 'sortdir';
     }
 
     return {
@@ -741,6 +769,8 @@ DjangoQL.prototype = {
       field,
       currentFullToken,
       modelStack,
+      queryPart,
+      nestingLevel,
     };
   },
 
@@ -928,6 +958,9 @@ DjangoQL.prototype = {
         }).map((f) => (
           suggestion(f, '', model[f].type === 'relation' ? '.' : ' ')
         ));
+	if (context.queryPart === 'expression' && context.nestingLevel === 0) {
+          this.suggestions.push(suggestion("order by", "", " "));
+	}
         break;
 
       case 'comparison':
@@ -1007,7 +1040,17 @@ DjangoQL.prototype = {
           suggestion('and', '', ' '),
           suggestion('or', '', ' '),
         ];
+        if (context.nestingLevel === 0) {
+          this.suggestions.push(suggestion('order by', '', ' '));
+        }
         break;
+
+      case 'sortdir':
+	this.suggestions = [
+	  suggestion('asc', '', ' '),
+	  suggestion('desc', '', ' ')
+	];
+	break;
 
       default:
         this.prefix = '';

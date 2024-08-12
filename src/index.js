@@ -593,8 +593,9 @@ DjangoQL.prototype = {
 
     const inputRect = this.textarea.getBoundingClientRect();
     const top = window.pageYOffset + inputRect.top + inputRect.height;
+    const left = inputRect.left + window.scrollX;
     this.completion.style.top = `${top}px`;
-    this.completion.style.left = `${inputRect.left}px`;
+    this.completion.style.left = `${left}px`;
     this.completion.style.display = 'block';
   },
 

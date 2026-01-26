@@ -25,6 +25,10 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
   tests:
+    needs: [notify-build-start]
+    if: |
+      always() &&
+      (needs.notify-build-start.result == 'success' || needs.notify-build-start.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -38,7 +42,7 @@ jobs:
       # Send notification on build failure
       - name: Notify slack fail
         uses: voxmedia/github-action-slack-notify-build@v1
-        if: failure()
+        if: failure() && github.event_name == 'push'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:

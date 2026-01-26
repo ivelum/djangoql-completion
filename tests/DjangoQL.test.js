@@ -163,8 +163,17 @@ describe('test DjangoQL completion', () => {
       });
     });
 
-    it('should recognize strings', () => {
+    it('should recognize double-quoted strings', () => {
       const strings = ['""', '"42"', '"\\t\\n\\u0042 \\" ^"'];
+      djangoQL.lexer.setInput(strings.join(' '));
+      strings.forEach((s) => {
+        expect(djangoQL.lexer.lex())
+          .toStrictEqual(token('STRING_VALUE', s.slice(1, s.length - 1)));
+      });
+    });
+
+    it('should recognize single-quoted strings', () => {
+      const strings = ["''", "'42'", "'\\t\\n\\u0042 \\' ^'"];
       djangoQL.lexer.setInput(strings.join(' '));
       strings.forEach((s) => {
         expect(djangoQL.lexer.lex())

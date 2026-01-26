@@ -15,14 +15,28 @@ const floatRegex = new RegExp(
   + `|${reIntValue}${reFractionPart}|${reIntValue}${reExponentPart}`,
 );
 const reLineTerminators = '\\n\\r\\u2028\\u2029';
-const reEscapedChar = '\\\\[\\\\"/bfnrt]';
 const reEscapedUnicode = '\\\\u[0-9A-Fa-f]{4}';
-const reStringChar = `[^\\\\"\\\\\\\\${reLineTerminators}]`;
-const stringRegex = new RegExp(
-  '\\"('
-  + `${reEscapedChar}|${reEscapedUnicode}|${reStringChar}`
-  + ')*\\"',
+
+// Double-quoted strings
+const reDoubleEscapedChar = '\\\\[\\\\"/bfnrt]';
+const reDoubleStringChar = `[^\\\\"\\\\\\\\${reLineTerminators}]`;
+const doubleStringPattern = (
+  '\\"'
+  + `(${reDoubleEscapedChar}|${reEscapedUnicode}|${reDoubleStringChar})*`
+  + '\\"'
 );
+
+// Single-quoted strings
+const reSingleEscapedChar = "\\\\[\\\\'/bfnrt]";
+const reSingleStringChar = `[^\\\\'\\\\\\\\${reLineTerminators}]`;
+const singleStringPattern = (
+  '\\\''
+  + `(${reSingleEscapedChar}|${reEscapedUnicode}|${reSingleStringChar})*`
+  + '\\\''
+);
+
+// Combined regex that matches either quote style
+const stringRegex = new RegExp(`${doubleStringPattern}|${singleStringPattern}`);
 const nameRegex = /[_A-Za-z][_0-9A-Za-z]*(\.[_A-Za-z][_0-9A-Za-z]*)*/;
 const reNotFollowedByName = '(?![_0-9A-Za-z])';
 const whitespaceRegex = /[ \t\v\f\u00A0]+/;
@@ -714,8 +728,11 @@ DjangoQL.prototype = {
         model = resolvedName.model;
         field = resolvedName.field;
         modelStack = resolvedName.modelStack;
-        if (prefix[0] === '"' && (this.models[model][field].type === 'str'
-            || this.models[model][field].options)) {
+        const modelField = this.models[model][field];
+        if (
+          (prefix[0] === '"' || prefix[0] === "'")
+          && (modelField.type === 'str' || modelField.options)
+        ) {
           prefix = prefix.slice(1);
         }
       }

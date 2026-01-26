@@ -15,28 +15,19 @@ const floatRegex = new RegExp(
   + `|${reIntValue}${reFractionPart}|${reIntValue}${reExponentPart}`,
 );
 const reLineTerminators = '\\n\\r\\u2028\\u2029';
+const reEscapedChar = '\\\\[\\\\"\\\\\'/bfnrt]';
 const reEscapedUnicode = '\\\\u[0-9A-Fa-f]{4}';
-
-// Double-quoted strings
-const reDoubleEscapedChar = '\\\\[\\\\"/bfnrt]';
-const reDoubleStringChar = `[^\\\\"\\\\\\\\${reLineTerminators}]`;
-const doubleStringPattern = (
-  '\\"'
-  + `(${reDoubleEscapedChar}|${reEscapedUnicode}|${reDoubleStringChar})*`
-  + '\\"'
+const reDoubleQuotedStringChar = `[^\\\\"\\\\\\\\${reLineTerminators}]`;
+const reDoubleQuotedString = (
+  `\\"(${reEscapedChar}|${reEscapedUnicode}|${reDoubleQuotedStringChar})*\\"`
 );
-
-// Single-quoted strings
-const reSingleEscapedChar = "\\\\[\\\\'/bfnrt]";
-const reSingleStringChar = `[^\\\\'\\\\\\\\${reLineTerminators}]`;
-const singleStringPattern = (
-  '\\\''
-  + `(${reSingleEscapedChar}|${reEscapedUnicode}|${reSingleStringChar})*`
-  + '\\\''
+const reSingleQuotedStringChar = `[^\\\\'\\\\\\\\${reLineTerminators}]`;
+const reSingleQuotedString = (
+  `\\'(${reEscapedChar}|${reEscapedUnicode}|${reSingleQuotedStringChar})*\\'`
 );
-
-// Combined regex that matches either quote style
-const stringRegex = new RegExp(`${doubleStringPattern}|${singleStringPattern}`);
+const stringRegex = new RegExp(
+  `${reDoubleQuotedString}|${reSingleQuotedString}`,
+);
 const nameRegex = /[_A-Za-z][_0-9A-Za-z]*(\.[_A-Za-z][_0-9A-Za-z]*)*/;
 const reNotFollowedByName = '(?![_0-9A-Za-z])';
 const whitespaceRegex = /[ \t\v\f\u00A0]+/;
@@ -729,10 +720,8 @@ DjangoQL.prototype = {
         field = resolvedName.field;
         modelStack = resolvedName.modelStack;
         const modelField = this.models[model][field];
-        if (
-          (prefix[0] === '"' || prefix[0] === "'")
-          && (modelField.type === 'str' || modelField.options)
-        ) {
+        if ((prefix[0] === '"' || prefix[0] === "'")
+          && (modelField.type === 'str' || modelField.options)) {
           prefix = prefix.slice(1);
         }
       }

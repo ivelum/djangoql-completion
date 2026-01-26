@@ -20,12 +20,20 @@ const reEscapedUnicode = '\\\\u[0-9A-Fa-f]{4}';
 // Double-quoted strings
 const reDoubleEscapedChar = '\\\\[\\\\"/bfnrt]';
 const reDoubleStringChar = `[^\\\\"\\\\\\\\${reLineTerminators}]`;
-const doubleStringPattern = `\\"(${reDoubleEscapedChar}|${reEscapedUnicode}|${reDoubleStringChar})*\\"`;
+const doubleStringPattern = (
+  '\\"'
+  + `(${reDoubleEscapedChar}|${reEscapedUnicode}|${reDoubleStringChar})*`
+  + '\\"'
+);
 
 // Single-quoted strings
 const reSingleEscapedChar = "\\\\[\\\\'/bfnrt]";
 const reSingleStringChar = `[^\\\\'\\\\\\\\${reLineTerminators}]`;
-const singleStringPattern = `\\'(${reSingleEscapedChar}|${reEscapedUnicode}|${reSingleStringChar})*\\'`;
+const singleStringPattern = (
+  '\\\''
+  + `(${reSingleEscapedChar}|${reEscapedUnicode}|${reSingleStringChar})*`
+  + '\\\''
+);
 
 // Combined regex that matches either quote style
 const stringRegex = new RegExp(`${doubleStringPattern}|${singleStringPattern}`);
@@ -720,8 +728,11 @@ DjangoQL.prototype = {
         model = resolvedName.model;
         field = resolvedName.field;
         modelStack = resolvedName.modelStack;
-        if ((prefix[0] === '"' || prefix[0] === "'") && (this.models[model][field].type === 'str'
-            || this.models[model][field].options)) {
+        const modelField = this.models[model][field];
+        if (
+          (prefix[0] === '"' || prefix[0] === "'")
+          && (modelField.type === 'str' || modelField.options)
+        ) {
           prefix = prefix.slice(1);
         }
       }

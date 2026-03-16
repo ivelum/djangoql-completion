@@ -139,7 +139,7 @@ describe('test DjangoQL completion', () => {
         token('CONTAINS', '~'),
         token('NOT_CONTAINS', '!~'),
       ];
-      djangoQL.lexer.setInput('() ., = != >\t >= < <= ~ !~');
+      djangoQL.lexer.setInput('() ., = != >\t >= < <= ~ !~ ');
       tokens.forEach((t) => {
         expect(djangoQL.lexer.lex()).toStrictEqual(t);
       });
@@ -147,7 +147,7 @@ describe('test DjangoQL completion', () => {
     });
 
     it('should recognize names', () => {
-      const names = ['a', 'myVar_42', '__LOL__', '_', '_0'];
+      const names = ['a', 'myVar_42', '__LOL__', '_', '_0', 'order'];
       djangoQL.lexer.setInput(names.join(' '));
       names.forEach((name) => {
         expect(djangoQL.lexer.lex()).toStrictEqual(token('NAME', name));
@@ -155,7 +155,8 @@ describe('test DjangoQL completion', () => {
     });
 
     it('should recognize reserved words', () => {
-      const words = ['True', 'False', 'None', 'or', 'and', 'in'];
+      const words = ['True', 'False', 'None', 'or', 'and', 'in',
+	             'order by', 'asc', 'desc'];
       djangoQL.lexer.setInput(words.join(' '));
       words.forEach((word) => {
         expect(djangoQL.lexer.lex())
@@ -266,7 +267,7 @@ describe('test DjangoQL completion', () => {
   });
 
   describe('.getScope()', () => {
-    it('should properly detect scope and prefix', () => {
+    it('should properly detect scope, prefix, nesting level, and query part', () => {
       const book = djangoQL.currentModel;
       const examples = [
         {
@@ -276,6 +277,8 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: book,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -285,6 +288,8 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: book,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -294,6 +299,8 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: book,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -303,6 +310,8 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: book,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -312,6 +321,8 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: book,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -321,6 +332,8 @@ describe('test DjangoQL completion', () => {
             scope: 'comparison',
             model: book,
             field: 'id',
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -330,6 +343,8 @@ describe('test DjangoQL completion', () => {
             scope: 'comparison',
             model: book,
             field: 'id',
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -339,6 +354,8 @@ describe('test DjangoQL completion', () => {
             scope: 'value',
             model: book,
             field: 'id',
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -348,6 +365,8 @@ describe('test DjangoQL completion', () => {
             scope: 'value',
             model: book,
             field: 'id',
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -357,6 +376,8 @@ describe('test DjangoQL completion', () => {
             scope: 'logical',
             model: null,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -366,6 +387,8 @@ describe('test DjangoQL completion', () => {
             scope: 'logical',
             model: null,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -375,6 +398,8 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: book,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -384,6 +409,8 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: 'auth.user',
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -393,6 +420,8 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: 'auth.user',
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -402,6 +431,8 @@ describe('test DjangoQL completion', () => {
             scope: 'logical',
             model: null,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -411,6 +442,8 @@ describe('test DjangoQL completion', () => {
             scope: 'logical',
             model: null,
             field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
         {
@@ -420,6 +453,8 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: book,
             field: null,
+	    nestingLevel: 1,
+	    queryPart: 'expression',
           },
         },
         {
@@ -429,6 +464,42 @@ describe('test DjangoQL completion', () => {
             scope: 'field',
             model: book,
             field: null,
+	    nestingLevel: 1,
+	    queryPart: 'expression',
+          },
+        },
+        {
+          args: ['order by foo', 7], // cursor is inside the `order by` clause
+          result: {
+            prefix: 'b',
+            scope: null,
+            model: null,
+            field: null,
+	    nestingLevel: 0,
+	    queryPart: 'expression',
+          },
+        },
+        {
+          args: ['order by foo', 10], // cursor is in field after `order by`
+          result: {
+            prefix: 'f',
+            scope: 'field',
+            model: book,
+            field: null,
+	    nestingLevel: 0,
+	    queryPart: 'ordering',
+          },
+        },
+        {
+	 // cursor is in field after `order by`
+          args: ['id > 10 order by id desc', 7],
+          result: {
+            prefix: '10',
+            scope: 'value',
+            model: book,
+            field: 'id',
+	    nestingLevel: 0,
+	    queryPart: 'expression',
           },
         },
       ];

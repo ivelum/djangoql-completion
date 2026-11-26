@@ -467,7 +467,7 @@ describe('test DjangoQL completion', () => {
         expect.not.arrayContaining([{
           snippetAfter: '.',
           snippetBefore: '',
-          suggestionText: 'book',
+          explanation: '',
           text: 'book',
         }]),
       );
@@ -480,7 +480,7 @@ describe('test DjangoQL completion', () => {
         expect.not.arrayContaining([{
           snippetAfter: '.',
           snippetBefore: '',
-          suggestionText: 'author',
+          explanation: '',
           text: 'author',
         }]),
       );
@@ -492,7 +492,7 @@ describe('test DjangoQL completion', () => {
         expect.arrayContaining([{
           snippetAfter: '.',
           snippetBefore: '',
-          suggestionText: 'book',
+          explanation: '',
           text: 'book',
         }]),
       );
@@ -503,10 +503,61 @@ describe('test DjangoQL completion', () => {
         expect.not.arrayContaining([{
           snippetAfter: '.',
           snippetBefore: '',
-          suggestionText: 'author',
+          explanation: '',
           text: 'author',
         }]),
       );
+    });
+  });
+
+  describe('.renderCompletion()', () => {
+    const payload = '<img src=x onerror="window.xss=1">';
+
+    function typeQuery(query) {
+      djangoQL.textarea.value = query;
+      djangoQL.textarea.setSelectionRange(query.length, query.length);
+      djangoQL.popupCompletion();
+      return [].slice.call(
+        djangoQL.completionUL.querySelectorAll('li[data-index]'),
+      );
+    }
+
+    it('should render suggested values as text, not HTML', () => {
+      djangoQL.models['core.book'].name.options = [payload];
+      const items = typeQuery('name = "');
+      expect(items).toHaveLength(1);
+      expect(items[0].querySelector('img')).toBeNull();
+      expect(items[0].textContent).toBe(payload);
+    });
+
+    it('should highlight the typed prefix without rendering HTML', () => {
+      djangoQL.models['core.book'].name.options = [payload, 'R&D <b>'];
+      let items = typeQuery('name = "img');
+      expect(items).toHaveLength(1);
+      expect(items[0].querySelector('img')).toBeNull();
+      expect(items[0].textContent).toBe(payload);
+      expect(items[0].querySelector('b').textContent).toBe('img');
+
+      items = typeQuery('name = "&D');
+      expect(items).toHaveLength(1);
+      expect(items[0].innerHTML).toBe('R<b>&amp;D</b> &lt;b&gt;');
+    });
+
+    it('should highlight case-sensitively without rendering HTML', () => {
+      djangoQL.valuesCaseSensitive = true;
+      djangoQL.models['core.book'].name.options = ['<i>&</i> & <I>'];
+      const items = typeQuery('name = "i');
+      expect(items).toHaveLength(1);
+      expect(items[0].querySelector('i')).toBeNull();
+      expect(items[0].innerHTML).toBe(
+        '&lt;<b>i</b>&gt;&amp;&lt;/<b>i</b>&gt; &amp; &lt;I&gt;',
+      );
+    });
+
+    it('should render explanations after the suggestion', () => {
+      const items = typeQuery('name ');
+      const notEqual = items.find((li) => li.textContent.startsWith('!='));
+      expect(notEqual.innerHTML).toBe('!=<i>is not equal to</i>');
     });
   });
 });

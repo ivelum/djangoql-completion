@@ -4,7 +4,9 @@ import isObject from 'lodash/isObject';
 import throttle from 'lodash/throttle';
 
 import LRUCache from './lru-cache';
-import { DOMReady, escapeRegExp, setUrlParams } from './utils';
+import {
+  DOMReady, escapeHtml, escapeRegExp, setUrlParams,
+} from './utils';
 
 const reIntValue = '(-?0|-?[1-9][0-9]*)';
 const reFractionPart = '\\.[0-9]+';
@@ -101,16 +103,12 @@ function suggestion(text, snippetBefore, snippetAfter, explanation) {
   // snippetBefore is an optional extra text to be pasted before main text.
   // snippetAfter is an optional text to be pasted after. It may also include
   // "|" symbol to designate desired cursor position after paste.
-  let suggestionText = text;
-  if (typeof explanation !== 'undefined') {
-    suggestionText += `<i>${explanation}</i>`;
-  }
-
+  // explanation is an optional text displayed after the main text.
   return {
     text,
     snippetBefore: snippetBefore || '',
     snippetAfter: snippetAfter || '',
-    suggestionText,
+    explanation: explanation || '',
   };
 }
 
@@ -248,7 +246,7 @@ DjangoQL.prototype = {
       if (typeof options.syntaxHelp === 'string') {
         syntaxHelp = document.createElement('p');
         syntaxHelp.className = 'syntax-help';
-        syntaxHelp.innerHTML = `<a href="${options.syntaxHelp}`
+        syntaxHelp.innerHTML = `<a href="${escapeHtml(options.syntaxHelp)}`
           + '" target="_blank">Syntax Help</a>';
         syntaxHelp.addEventListener('mousedown', (e) => {
           // This is needed to prevent conflict with textarea.onblur event
@@ -505,17 +503,18 @@ DjangoQL.prototype = {
     }
   },
 
+  // Returns HTML: the text is escaped, and occurrences of highlight
+  // are wrapped in <b> tags.
   highlight(text, highlight) {
-    if (!highlight || !text) {
-      return text;
+    if (!highlight) {
+      return escapeHtml(text);
     }
-    if (this.highlightCaseSensitive) {
-      return text.split(highlight).join(`<b>${highlight}</b>`);
-    }
-    return text.replace(
-      new RegExp(`(${escapeRegExp(highlight)})`, 'ig'),
-      '<b>$1</b>',
-    );
+    const flags = this.highlightCaseSensitive ? 'g' : 'ig';
+    const re = new RegExp(`(${escapeRegExp(highlight)})`, flags);
+    // With a capturing group, matches land at odd indexes
+    return String(text).split(re).map((part, i) => (
+      i % 2 ? `<b>${escapeHtml(part)}</b>` : escapeHtml(part)
+    )).join('');
   },
 
   renderCompletion(dontForceDisplay) {
@@ -556,10 +555,9 @@ DjangoQL.prototype = {
         currentLi.addEventListener('mousedown', this.onCompletionMouseDown);
         this.completionUL.appendChild(currentLi);
       }
-      currentLi.innerHTML = this.highlight(
-        this.suggestions[i].suggestionText,
-        this.prefix,
-      );
+      const { text, explanation } = this.suggestions[i];
+      currentLi.innerHTML = this.highlight(text, this.prefix)
+        + (explanation ? `<i>${escapeHtml(explanation)}</i>` : '');
       if (i === this.selected) {
         currentLi.className = 'active';
         currentLiRect = currentLi.getBoundingClientRect();
